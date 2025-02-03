@@ -10,16 +10,7 @@ from phi.tools.duckduckgo import DuckDuckGo
 from duckduckgo_search import DDGS
 import pandas as pd
 import requests
-from bs4 import BeautifulSoup 
-
-dotenv.load_dotenv()
-
-from phi.agent import Agent, RunResponse
-from phi.model.groq import Groq
-import dotenv
-from phi.tools.duckduckgo import DuckDuckGo
-from duckduckgo_search import DDGS
-import pandas as pd
+from bs4 import BeautifulSoup
 
 # Init
 dotenv.load_dotenv()
