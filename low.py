@@ -6,11 +6,10 @@
 from phi.agent import Agent, RunResponse
 from phi.model.groq import Groq
 import dotenv
-from phi.tools.duckduckgo import DuckDuckGo
-from duckduckgo_search import DDGS
 import pandas as pd
 import requests
 from bs4 import BeautifulSoup
+from web_search import brave_search, ddg_search
 
 # Init
 dotenv.load_dotenv()
@@ -23,20 +22,19 @@ agent = Agent(
     markdown=True
 )
 
-
+search_engine = 'brave' # brave or ddg
 pi_name = "Ibrahim Cisse"
 affiliation = ''
 
 # Get Google Scholar Link
 query = pi_name + " " + affiliation + " " + "Google Scholar"
 
-results = DDGS().text(
-    keywords=query
-)
-results_df = pd.DataFrame(results)
-search_result = str(results)
+if search_engine == 'brave':
+    search_result = brave_search(query=query)
+else:
+    search_result = ddg_search(query=query)
 
-gs_task = f"Provided below are a json of top web search results for the Google Scholar webpage of {pi_name}, {affiliation}. Decide which of the results looks like it is the official Google Scholar page and provide ONLY the link (from href column), and nothing else in your response. If none of the results look like the correct person's Google Scholar webpage, respond with only '0'"
+gs_task = f"Provided below are top web search results for the Google Scholar webpage of {pi_name}, {affiliation}. Decide which of the results looks like it is the official Google Scholar page and provide ONLY the link to the Google Scholar page, and nothing else in your response. If none of the results look like the correct person's Google Scholar webpage, respond with only '0'"
 gs_prompt = f"{gs_task} \n<WEB RESULTS START>\n{search_result}\n<WEB RESULTS END>"
 
 # agent.print_response(prompt, stream=True)
@@ -69,3 +67,9 @@ personalize_run = agent.run(personalize_prompt)
 personalized_para = personalize_run.content
 
 # Save paragraph, other info => Google Sheets
+cols = ['PI_NAME', 'AFFILIATION', 'GS_URL', 'PAPERS', 'PARAGRAPH']
+row = [pi_name, affiliation, scholar_url, top_papers, personalized_para]
+output = pd.DataFrame(data=row, columns=cols)
+
+output.to_csv(f'{pi_name}.csv')
+print(output)
