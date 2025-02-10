@@ -10,6 +10,7 @@ import pandas as pd
 import requests
 from bs4 import BeautifulSoup
 from web_search import brave_search, ddg_search
+import os
 
 # Init
 dotenv.load_dotenv()
@@ -45,7 +46,7 @@ if gs_run.content != '0':
     scholar_url = gs_run.content + "&view_op=list_works&sortby=pubdate"
 
 # Read publication list on Google Scholar
-scholar_page = requests.get(scholar_url)
+scholar_page = requests.get(scholar_url, headers={'User-agent': 'mail-agentv0.1'})
 
 if str(scholar_page.status_code).startswith('2'):
     soup = BeautifulSoup(scholar_page.text, 'html.parser')
@@ -59,6 +60,14 @@ extr_run = agent.run(extr_prompt)
 top_papers = extr_run.content
 
 # Personalize email
+para_agent = Agent(
+    model=Groq(id="gemma2-9b-it"),
+    # add_chat_history_to_messages=True,
+    # num_history_responses=5,
+    tools=[],
+    markdown=True
+)
+
 example_para = "I find the ways the brain captures, encodes, and processes information to be extremely fascinating, and your lab's work on elucidating the mechanisms of memory and learning has been a significant inspiration. I'm particularly interested in your projects combining genetics with neuroscience, and thoroughly enjoyed reading your paper on how neuronal ensemble dynamics in the hippocampus underlie episodic memory formation, as well as your work on the role of synaptic plasticity in the retrosplenial cortex in contextual learning, especially its insights into activity-dependent transcriptional and epigenetic programs critical for memory retrieval and consolidation."
 personalize_task = "Now, given the chosen most relevant papers (given below), talk about my interest in them in a short paragraph that mimics the example paragraph given below. The paragraph should talk about my interest in the papers, not plainly highlighting what the paper is talking about. Respond with only the paragraph and nothing else."
 personalize_prompt = f'{personalize_task}\n<EXAMPLE PARAGRAPH STARTS>\n{example_para}\n<EXAMPLE PARAGRAPH ENDS>\nRELEVANT PAPERS: {top_papers}'
@@ -71,5 +80,6 @@ cols = ['PI_NAME', 'AFFILIATION', 'GS_URL', 'PAPERS', 'PARAGRAPH']
 row = [pi_name, affiliation, scholar_url, top_papers, personalized_para]
 output = pd.DataFrame(data=row, columns=cols)
 
-output.to_csv(f'{pi_name}.csv')
+save_csv_path = '/mnt/c/users/hridai/Desktop'
+output.to_csv(os.path.join(save_csv_path, f'{pi_name}.csv'))
 print(output)
