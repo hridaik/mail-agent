@@ -1,4 +1,4 @@
-# Mail Agent v0.1
+# Tailor Agent v0.1
 # Author: Hridai Khurana
 # Example Usage: cli.py --level low --pi_list sample_list.csv 
 #                       --sample_text sample_para.txt --criteria 'AI/ML, mathematical modelling, genomics'

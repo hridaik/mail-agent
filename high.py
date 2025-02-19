@@ -1,4 +1,4 @@
-# Mail Agent v0.1
+# Tailor Agent v0.1
 # Author: Hridai Khurana
 # High Automation Level
 # Description
