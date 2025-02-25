@@ -13,6 +13,7 @@ parser.add_argument("--level", type=str, help="Automation level. ONLY LOW AVAILA
 parser.add_argument("--pi_list", type=str, help="Path to a CSV of people to email. CSV should include columns: name, affiliation")
 parser.add_argument("--search_engine", type=str, help="Search engine to use. Options: brave (Brave search), ddg (DuckDuckGo)")
 parser.add_argument("--output_path", type=str, help="Path to save output CSV")
+parser.add_argument("--out_name", type=str, help="Output CSV file name")
 parser.add_argument("--sample_text", type=str, help="Path to TXT file with sample text to personalize")
 parser.add_argument("--criteria", type=str, help="Quotes-enclosed string of topics relevant to you. Example usage: --criteria 'AI/ML, mathematical modelling, genomics'")
 parser.add_argument("--delay", type=int, help="Time in seconds to wait after processing each row to avoid API timeout. Default: 60s")
@@ -29,6 +30,7 @@ sample = sample_txt.read()
 out_df = low(args.pi_list, args.search_engine, sample=sample, criteria=args.criteria)
 
 save_csv_path = '/mnt/c/users/hridai/Desktop'
-outfile = os.path.join(save_csv_path, 'mail_agent_TU_1.csv')
+fname = args.out_name
+outfile = os.path.join(save_csv_path, fname)
 out_df.to_csv(outfile)
 print(f'Output CSV saved to {outfile}')

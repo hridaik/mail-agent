@@ -110,7 +110,8 @@ def low(pi_list_path, search_engine, sample=example_para, criteria=example_crite
 
                 personalize_task = ("Now, given the chosen most relevant papers (given below), talk about my interest in them in a short paragraph "
                                     "that mimics the example paragraph given below. The paragraph should talk about my interest in the papers, "
-                                    "not plainly highlighting what the paper is talking about, and sound natural and human. Respond with only the paragraph and nothing else.")
+                                    "not plainly highlighting what the paper is talking about, and sound natural and human. Try to keep it within 100 words. "
+                                    "In case it is getting long, you can skip talking about one of the three papers. Respond with only the paragraph and nothing else.")
                 personalize_prompt = (f"{personalize_task}\n<EXAMPLE PARAGRAPH STARTS>\n{sample}\n<EXAMPLE PARAGRAPH ENDS>\n"
                                       f"RELEVANT PAPERS: {top_papers}")
                 personalize_run = para_agent.run(personalize_prompt)
@@ -125,7 +126,7 @@ def low(pi_list_path, search_engine, sample=example_para, criteria=example_crite
                         markdown=True
                     )
                 elif provider == "aws":
-                    qc_agent = BedrockChat(history_size = 1)
+                    qc_agent = BedrockChat(history_size = 3)
                 
                 qc_task = "Verify the scientific validity as well as coherence of concepts talked about in the paragraph below. Your response should be only one word - either 'PASS' or 'FAIL' depending on whether the paragraph makes sense scientifically/biologically or not."
                 qc_prompt = f'{qc_task} <PARAGRAPH>{personalized_para}</PARAGRAPH>'
@@ -133,8 +134,18 @@ def low(pi_list_path, search_engine, sample=example_para, criteria=example_crite
                 qc_run = qc_agent.run(qc_prompt)
 
                 qc_status = qc_run.content.strip()
+                if qc_status == 'FAIL':
+                    fail_run = qc_agent.run("Briefly mention what is wrong about the science in the paragraph.")
+                    qc_status = fail_run.content
 
-                row_output = [pi_name, affiliation, scholar_url, top_papers, personalized_para, qc_status]
+                idea_agent = BedrockChat(history_size = 1)
+                idea_task = "Given the science discussed in the paragraph provided below, can you think of an improvement or extension of the research, specifically using some computational techniques? Respond with only two ideas listed 1 and 2. Make sure they are brief."
+                idea_prompt = f'{idea_task} <PARAGRAPH>{personalized_para}</PARAGRAPH>'
+
+                idea_run = idea_agent.run(idea_prompt)
+                idea = idea_run.content
+
+                row_output = [pi_name, affiliation, scholar_url, top_papers, personalized_para, qc_status, idea]
                 output_rows.append(row_output)
                 success = True
 
@@ -158,6 +169,6 @@ def low(pi_list_path, search_engine, sample=example_para, criteria=example_crite
         else:
             print(f"Processing complete for file {pi_list_path}")
 
-    cols = ['PI_NAME', 'AFFILIATION', 'GS_URL', 'PAPERS', 'PARAGRAPH', 'SCIENCE']
+    cols = ['PI_NAME', 'AFFILIATION', 'GS_URL', 'PAPERS', 'PARAGRAPH', 'SCIENCE', 'IDEA']
     output = pd.DataFrame(data=output_rows, columns=cols)
     return output

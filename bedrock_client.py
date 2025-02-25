@@ -6,7 +6,7 @@ class ModelResponse:
     content: str
 
 class BedrockChat:
-    def __init__(self, model_id="amazon.nova-lite-v1:0", region="us-east-1", max_tokens=1024, history_size=5):
+    def __init__(self, model_id="amazon.nova-lite-v1:0", region="us-east-1", max_tokens=512, history_size=5):
         """
         Args:
             model_id (str): The AWS Bedrock model identifier.
