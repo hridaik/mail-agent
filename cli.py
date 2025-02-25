@@ -29,6 +29,6 @@ sample = sample_txt.read()
 out_df = low(args.pi_list, args.search_engine, sample=sample, criteria=args.criteria)
 
 save_csv_path = '/mnt/c/users/hridai/Desktop'
-outfile = os.path.join(save_csv_path, 'mail_agent.csv')
+outfile = os.path.join(save_csv_path, 'mail_agent_TU_1.csv')
 out_df.to_csv(outfile)
 print(f'Output CSV saved to {outfile}')

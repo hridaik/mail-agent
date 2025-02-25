@@ -5,6 +5,9 @@
 
 from phi.agent import Agent, RunResponse
 from phi.model.groq import Groq
+
+from bedrock_client import BedrockChat
+
 import dotenv
 import pandas as pd
 import requests
@@ -18,7 +21,9 @@ dotenv.load_dotenv()
 example_criteria = 'AI/ML, mathematical modelling, genomics'
 example_para = "I find the ways the brain captures, encodes, and processes information to be extremely fascinating, and your lab's work on elucidating the mechanisms of memory and learning has been a significant inspiration. I'm particularly interested in your projects combining genetics with neuroscience, and thoroughly enjoyed reading your paper on how neuronal ensemble dynamics in the hippocampus underlie episodic memory formation, as well as your work on the role of synaptic plasticity in the retrosplenial cortex in contextual learning, especially its insights into activity-dependent transcriptional and epigenetic programs critical for memory retrieval and consolidation."
 
-def low(pi_list_path, search_engine, sample=example_para, criteria=example_criteria, delay=60, max_retries=3):
+provider = "aws" # groq
+
+def low(pi_list_path, search_engine, sample=example_para, criteria=example_criteria, delay=0, max_retries=3):
     """
     Processes the list of PIs from the CSV file at `pi_list_path` and, for each, performs web search and language model 
     operations to extract a Google Scholar URL, retrieve publication details, extract the top three relevant papers, and 
@@ -39,13 +44,16 @@ def low(pi_list_path, search_engine, sample=example_para, criteria=example_crite
         while attempt < max_retries and not success:
             try:
                 # Initialize the first agent (for web search and extraction)
-                agent = Agent(
-                    model=Groq(id="llama-3.3-70b-versatile"),
-                    add_chat_history_to_messages=False,
-                    # num_history_responses=5,
-                    tools=[],
-                    markdown=True
-                )
+                if provider == "aws":
+                    agent = BedrockChat(history_size=3)
+                elif provider == "groq":
+                    agent = Agent(
+                        model=Groq(id="llama-3.3-70b-versatile"),
+                        add_chat_history_to_messages=False,
+                        # num_history_responses=5,
+                        tools=[],
+                        markdown=True
+                    )
 
                 # Get Google Scholar Link using the chosen search engine
                 print("Finding Google Scholar link...")
@@ -82,19 +90,24 @@ def low(pi_list_path, search_engine, sample=example_para, criteria=example_crite
                 print("Picking most relevant papers...")
                 extr_task = (f"Provided below is the Google Scholar HTML Table of {pi_name}'s publication list sorted by most recent. "
                              f"From this, pick the 3 most relevant to the criteria: {criteria}. Your response should contain only the "
-                             "publication names listed from 1 to 3.")
+                             "publication names listed from 1 to 3. Avoid picking review papers, stick to original research instead.")
                 extr_prompt = f"{extr_task}\n<HTML TABLE STARTS>\n{gs_html}\n<HTML TABLE ENDS>"
                 extr_run = agent.run(extr_prompt)
                 top_papers = extr_run.content.strip()
+                print(top_papers)
 
                 # Personalize email paragraph using a second agent
                 print("Personalizing text...")
-                models = ["gemma2-9b-it", "llama3-70b-8192"] 
-                para_agent = Agent(
-                    model=Groq(id=models[1]),
-                    tools=[],
-                    markdown=True
-                )
+                if provider == "groq":
+                    models = ["gemma2-9b-it", "llama3-70b-8192"] 
+                    para_agent = Agent(
+                        model=Groq(id=models[1]),
+                        tools=[],
+                        markdown=True
+                    )
+                elif provider == "aws":
+                    para_agent = BedrockChat(history_size = 1)
+
                 personalize_task = ("Now, given the chosen most relevant papers (given below), talk about my interest in them in a short paragraph "
                                     "that mimics the example paragraph given below. The paragraph should talk about my interest in the papers, "
                                     "not plainly highlighting what the paper is talking about, and sound natural and human. Respond with only the paragraph and nothing else.")
@@ -104,7 +117,24 @@ def low(pi_list_path, search_engine, sample=example_para, criteria=example_crite
                 personalized_para = personalize_run.content.strip()
 
                 # Save successful row output
-                row_output = [pi_name, affiliation, scholar_url, top_papers, personalized_para]
+                if provider == "groq":
+                    models = ["gemma2-9b-it", "llama3-70b-8192"] 
+                    qc_agent = Agent(
+                        model=Groq(id=models[1]),
+                        tools=[],
+                        markdown=True
+                    )
+                elif provider == "aws":
+                    qc_agent = BedrockChat(history_size = 1)
+                
+                qc_task = "Verify the scientific validity as well as coherence of concepts talked about in the paragraph below. Your response should be only one word - either 'PASS' or 'FAIL' depending on whether the paragraph makes sense scientifically/biologically or not."
+                qc_prompt = f'{qc_task} <PARAGRAPH>{personalized_para}</PARAGRAPH>'
+
+                qc_run = qc_agent.run(qc_prompt)
+
+                qc_status = qc_run.content.strip()
+
+                row_output = [pi_name, affiliation, scholar_url, top_papers, personalized_para, qc_status]
                 output_rows.append(row_output)
                 success = True
 
@@ -128,6 +158,6 @@ def low(pi_list_path, search_engine, sample=example_para, criteria=example_crite
         else:
             print(f"Processing complete for file {pi_list_path}")
 
-    cols = ['PI_NAME', 'AFFILIATION', 'GS_URL', 'PAPERS', 'PARAGRAPH']
+    cols = ['PI_NAME', 'AFFILIATION', 'GS_URL', 'PAPERS', 'PARAGRAPH', 'SCIENCE']
     output = pd.DataFrame(data=output_rows, columns=cols)
     return output
